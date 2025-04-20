@@ -26,7 +26,7 @@ def criar_tabelas():
     # codigo,descriçao,cliente,unidade de medida,navalha,modelo,
     # consumo e campo status para definir se o produto está ativo ou inativo.
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTIS produtos(
+    CREATE TABLE IF NOT EXISTS produtos (
         codigo INTEGER PRIMARY KEY AUTOINCREMENT,
         descricao TEXT NOT NULL,
         cliente TEXT NOT NULL,
@@ -35,15 +35,15 @@ def criar_tabelas():
         modelo TEXT NOT NULL,
         consumo FLOAT NOT NULL,
         status TEXT NOT NULL CHECK(status IN ('ativo', 'inativo'))
-    )''')
-
+    )
+    ''')
     # CRIAÇÃO DA TABELA DE PEDIDOS
     # A tabela pedidos será criada para armazenar os pedidos que serão
     # cortados pela plotter com os seguintes campos:Data do pedido, número do pedido,
     # cliente, código, descrição, quantidade esperada, data de entrega,projeção de placas
     # e status do pedido.
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS pedidos(
+    CREATE TABLE IF NOT EXISTS pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         data_pedido TEXT NOT NULL,
         numero_pedido TEXT NOT NULL,
@@ -53,10 +53,10 @@ def criar_tabelas():
         quantidade_esperada INTEGER NOT NULL,
         data_entrega TEXT NOT NULL,
         projecao_placas INTEGER NOT NULL,
-    status TEXT NOT NULL CHECK(status_do_pedido IN ('ABERTO', 'FECHADO', 'CANCELADO'))
-    FOREIGN KEY (codigo) REFERENCES produtos(codigo),
-    FOREIGN KEY (numero_pedido) REFERENCES pedidos(numero_pedido),
-    )''')
+        status TEXT NOT NULL CHECK(status IN ('ABERTO', 'FECHADO', 'CANCELADO')),
+        FOREIGN KEY (codigo) REFERENCES produtos(codigo)
+    )
+    ''')
 
     # CRIAÇÃO DA TABELA DE PRODUÇÃO
     # A tabela produção será criada para armazenar os dados de produção da plotter com os seguintes campos:
@@ -65,7 +65,7 @@ def criar_tabelas():
     # status da produção(PENDENTE,ANDAMENTO,FINALIZADO),
     # placas utilizadas,sobras de placas,media de pares por placas
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS producao(
+    CREATE TABLE IF NOT EXISTS producao (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         data_inicial TEXT NOT NULL,
         numero_pedido TEXT NOT NULL,
@@ -82,8 +82,9 @@ def criar_tabelas():
         sobras_placas INTEGER NOT NULL,
         media_pares_por_placa FLOAT NOT NULL,
         FOREIGN KEY (codigo) REFERENCES produtos(codigo),
-        FOREIGN KEY (numero_pedido) REFERENCES pedidos(numero_pedido),
-    )''')
+        FOREIGN KEY (numero_pedido) REFERENCES pedidos(numero_pedido)
+    )
+    ''')
 
 # Salva as alterações e fecha a conexão com o banco de dados
     conn.commit()
@@ -92,12 +93,3 @@ def criar_tabelas():
     return True
  # Executar a criação das tabelas
 criar_tabelas()
-
-# Função para cadastrar produto na tabela produtos
-
-                                 
-
-
-
-
-
