@@ -1,0 +1,8 @@
+# Este é um arquivo de requisitos para um projeto Python.
+# Ele especifica os pacotes e suas versões necessários para executar o projeto.
+sqlite3
+pandas
+numpy
+datetime
+contextlib
+contextmanager

@@ -1,0 +1,18 @@
+# Ambiente virtual
+venv/
+__pycache__/
+*.pyc
+
+# Banco de dados local
+*.db
+*.sqlite
+
+# Arquivos gerados
+*.log
+*.xlsx
+
+# Arquivos do sistema
+.DS_Store
+.vscode/
+Thumbs.db
+.idea/

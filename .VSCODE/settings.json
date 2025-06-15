@@ -1,0 +1,44 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true
+}
+  
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "python.formatting.provider": "black",
+    // Linting - verificação de qualidade
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.mypyEnabled": true,
+    // Configurações específicas dos linters
+    "python.linting.pylintArgs": [
+        "--disable=all",
+        "--enable=E1101",
+        "--max-line-length=120"
+    ],
+    "python.linting.flake8Args": [
+        "--max-line-length=120"
+    ],
+    "python.linting.mypyArgs": [
+        "--ignore-missing-imports",
+        "--follow-imports=silent",
+        "--show-column-numbers",
+        "--disallow-untyped-defs",
+        "--warn-return-any",
+        "--warn-unused-ignores"
+    ],
+    // Pylance (inteligência do VS Code)
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.useLibraryCodeForTypes": true
+}

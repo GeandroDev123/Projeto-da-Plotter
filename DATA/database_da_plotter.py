@@ -45,7 +45,7 @@ def criar_tabelas():
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data_pedido TEXT NOT NULL,
+        data_pedido DATE NOT NULL,
         numero_pedido TEXT NOT NULL,
         cliente TEXT NOT NULL,
         codigo INTEGER NOT NULL,
@@ -53,7 +53,7 @@ def criar_tabelas():
         quantidade_esperada INTEGER NOT NULL,
         data_entrega TEXT NOT NULL,
         projecao_placas INTEGER NOT NULL,
-        status TEXT NOT NULL CHECK(status IN ('ABERTO', 'FECHADO', 'CANCELADO')),
+        status TEXT NOT NULL CHECK(status IN ('ABERTO', 'FINALIZADO', 'ANDAMENTO', 'CANCELADO','PENDENTE')),
         FOREIGN KEY (codigo) REFERENCES produtos(codigo)
     )
     ''')
@@ -67,17 +67,18 @@ def criar_tabelas():
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS producao (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        data_inicial TEXT NOT NULL,
+        data_inicial DATE NOT NULL,
         numero_pedido TEXT NOT NULL,
+        cliente TEXT NOT NULL,
         codigo INTEGER NOT NULL,
         descricao TEXT NOT NULL,
-        hora_inicio TEXT NOT NULL,
-        hora_termino TEXT NOT NULL,
-        data_finalizacao TEXT NOT NULL,
+        hora_inicio TIME NOT NULL,
+        hora_final TIME NOT NULL,
+        data_final DATE NOT NULL,
         quantidade_produzida INTEGER NOT NULL,
         quantidade_esperada INTEGER NOT NULL,
         eficiencia FLOAT NOT NULL,
-        status TEXT NOT NULL CHECK(status IN ('PENDENTE', 'ANDAMENTO', 'FINALIZADO')),
+        status_do_pedido TEXT NOT NULL CHECK(status IN ('PENDENTE', 'ANDAMENTO', 'FINALIZADO')),
         placas_utilizadas INTEGER NOT NULL,
         sobras_placas INTEGER NOT NULL,
         media_pares_por_placa FLOAT NOT NULL,
@@ -92,4 +93,5 @@ def criar_tabelas():
     print("Tabelas criadas com sucesso!")
     return True
  # Executar a criação das tabelas
+
 criar_tabelas()
