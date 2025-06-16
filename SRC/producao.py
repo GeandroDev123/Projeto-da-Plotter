@@ -52,18 +52,65 @@ def buscar_pedido(cursor, conn ):
         conn.rollback()
 
 
-
-
-# Função para inserir dados de produção
+# Funções para inserir dados finais da produção
 # Data Final, Hora final, Quantidade produzida,placass utilizadas,
 # sobras de placas
 
-def solicitar_data_final():
+# Função para solicitar e validar hora final
+def hora_final():
+    hora_final = input("Digite a hora final da produção (HH:MM): ").strip()
+    try:
+        datetime.strptime(hora_final, "%H:%M")
+        return hora_final
+    except ValueError:
+        print("Hora inválida. Use o formato HH:MM.")
+        return None
+
+# Função para solicitar e validar data final
+def data_final():
     data_final = input("Digite a data final da produção (dd/mm/yyyy): ").strip()
     try:
-        # Verifica se a data está no formato correto
         datetime.strptime(data_final, "%d/%m/%Y")
         return data_final
     except ValueError:
-        print("Data final inválida. Utilize o formato dd/mm/yyyy.")
+        print("Data inválida. Use o formato dd/mm/yyyy.")
         return None
+
+# Solicita os dados finais de produção
+def dados_finais_da_producao():
+    try:
+        # Solicita dados finais da produção
+        quantidade_produzida = int(input("Digite a quantidade produzida: ").strip())
+        placas_utilizadas = float(input("Digite o número de placas utilizadas: ").strip().replace(',', '.'))
+        sobras_placas = float(input("Digite o número de sobras de placas: ").strip().replace(',', '.'))
+        return quantidade_produzida, placas_utilizadas, sobras_placas
+    except ValueError:
+        print("Todos os dados devem ser números.")
+        return None, None, None
+
+# Atualiza a linha da produção ainda pendente
+def atualizar_producao(hora_final, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, cursor, conn):
+    try:
+        # Buscar uma produção em aberto
+        cursor.execute("SELECT id FROM producao WHERE data_final IS NULL AND hora_final IS NULL")
+        producao = cursor.fetchone()
+
+        if not producao:
+            print("Nenhuma produção pendente encontrada.")
+            return
+
+        producao_id = producao[0]
+
+        cursor.execute('''
+            UPDATE producao
+            SET hora_final = ?, data_final = ?, quantidade_produzida = ?,
+                placas_utilizadas = ?, sobras_placas = ?
+            WHERE id = ?
+        ''', (hora_final, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, producao_id))
+
+        conn.commit()
+        print("Produção finalizada com sucesso!")
+
+    except Exception as e:
+        print(f"Erro ao atualizar produção: {e}")
+        conn.rollback()
