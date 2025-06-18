@@ -114,3 +114,44 @@ def atualizar_producao(hora_final, data_final, quantidade_produzida, placas_util
     except Exception as e:
         print(f"Erro ao atualizar produção: {e}")
         conn.rollback()
+
+# Função para calcular a eficiência da produção, após a inserção da quantidade produzida
+# A eficiência é calculada e inserida na tabela de produção atutomaticamente
+def calcular_eficiencia(cursor, conn):
+    try:
+        # Buscar uma produção finalizada
+        cursor.execute("SELECT id, quantidade_esperada, quantidade_produzida FROM producao WHERE data_final IS NOT NULL ORDER BY id DESC LIMIT 1")
+        producao = cursor.fetchone()
+
+        if not producao:
+            print("Nenhuma produção finalizada encontrada.")
+            return
+        
+        producao_id, quantidade_esperada, quantidade_produzida = producao
+        # Calcula a eficiência evitando divisão por zero 
+        if quantidade_esperada == 0:
+            eficiencia = 0
+        else:
+            eficiencia = round((quantidade_produzida / quantidade_esperada) * 100, 2)
+
+        # Atualizar a eficiência na tabela de produção
+        cursor.execute('''
+            UPDATE producao
+            SET eficiencia = ?
+            WHERE id = ?
+        ''', (eficiencia, producao_id))
+
+        conn.commit()
+        print(f"Eficiencia calculada e atualizada: {eficiencia:.2f}%")
+
+    except Exception as e:
+        print(f"Erro ao calcular eficiência: {e}")
+        conn.rollback() 
+
+        
+  
+
+    
+
+
+
