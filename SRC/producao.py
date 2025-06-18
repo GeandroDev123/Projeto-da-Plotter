@@ -148,10 +148,42 @@ def calcular_eficiencia(cursor, conn):
         print(f"Erro ao calcular eficiência: {e}")
         conn.rollback() 
 
-        
-  
+# Função para atulizar o status da produção na tabela
+# Status inicial será sempre PENDENTE
+# Pedido com a quantidade produzida menor que 100% será atualizado para ANDAMENTO
+# Pedido com a quantidade produzida igual ou superior a 100% será atualizado para FINALIZADO
+# Quando o usuario inserir quantidade produzida
+# O sistema deve atualizar o status dos pedidos na tabela de produção automaticamente
 
-    
+def atualizar_status_producao(quantidade_produzida,status_do_pedido, cursor, conn):
+    try:
+        # Buscar produção
+        cursor.execute("SELECT numero_pedido, quantidade_produzida FROM producao WHERE data_final IS NOT NULL ORDER BY id DESC LIMIT 1")
+        producao = cursor.fetchone()
+
+        if not producao:
+            print("Nenhuma produção finalizada encontrada.")
+            return
+        numero_pedido, quantidade_produzida = producao
+
+        # Atualizar o status com base na quantidade produzida
+        if quantidade_produzida < 100:
+            status_do_pedido = 'ANDAMENTO'
+        elif quantidade_produzida >= 100:
+            status_do_pedido = 'FINALIZADO'
+        else:
+            status_do_pedido= 'PENDENTE'
+        # Atualizar o status na tabela de produção
+        cursor.execute('''
+        UPDATE producao
+        SET status_do_pedido = ?
+        WHERE numero_pedido = ?
+        ''', (status_do_pedido, numero_pedido))
+        conn.commit()
+        print(f"Status da produção atualizado para: {status_do_pedido}")
+    except Exception as e:
+        print(f"Erro ao atualizar status da produção: {e}")
+        conn.rollback()
 
 
 
