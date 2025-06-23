@@ -185,5 +185,42 @@ def atualizar_status_producao(quantidade_produzida,status_do_pedido, cursor, con
         print(f"Erro ao atualizar status da produção: {e}")
         conn.rollback()
 
+# Função para calcular a média de pares por placa
+# Após o usuário inserir a quantidade produzida, placas utilizadas 
+# Sistema deve calcular a média de pares por placa
+# Quantidade produzida / placas utilizadas
+# valor deve ser inserido na tabela de produção automaticamente
 
+def calcular_media_pares_por_placa(quantidade_produzida:int, placas_utilizadas:float, cursor, conn)->None:
+    try:
+        # Verifica se as placas utilizadas são diferentes de zero,para evitar divisão por zero:
+        if placas_utilizadas == 0:
+            media_pares_por_placa = 0
+
+        else:
+            media_pares_por_placa = round(quantidade_produzida / placas_utilizadas, 2)
+
+        # Buscar a última produção finalizada
+        cursor.execute("SELECT id FROM producao WHERE data_final IS NOT NULL ORDER BY id DESC LIMIT 1")
+        producao = cursor.fetchone()
+
+        if not producao:
+            print("Nenhuma produção finalizada encontrada.")
+            return
+
+        producao_id = producao[0]
+
+        # Atualizar a média de pares por placa na tabela de produção
+        cursor.execute('''
+            UPDATE producao
+            SET media_pares_por_placa = ?
+            WHERE id = ?
+        ''', (media_pares_por_placa, producao_id))
+
+        conn.commit()
+        print(f"Média de pares por placa calculada e atualizada: {media_pares_por_placa:.2f}")
+
+    except Exception as e:
+        print(f"Erro ao calcular média de pares por placa: {e}")
+        conn.rollback()
 
