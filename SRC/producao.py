@@ -11,7 +11,7 @@ from datetime import datetime
 # Os pedidos repetidos serão inseridos normalmente
 # Depois do pedido Digitado ele deve trazer os seguintes dados cliente,codigo,descricao,quantidade:
 
-def buscar_pedido(cursor, conn ):
+def inserir_pedido_na_producao(cursor, conn):
     try:
         data_inicial = input("Digite a data inicial da produção (dd/mm/yyyy): ").strip()
         try:
@@ -224,3 +224,22 @@ def calcular_media_pares_por_placa(quantidade_produzida:int, placas_utilizadas:f
         print(f"Erro ao calcular média de pares por placa: {e}")
         conn.rollback()
 
+# Função para exibir o menu de produção
+def menu_producao(cursor, conn):
+    while True:
+        print("\nMenu da Produção:")
+        print("1. Inserir pedido na produção")
+        print("2. Dados finais da produção")
+        print("3. Sair")
+
+        opcao = input("Escolha uma opção: ").strip()
+
+        if opcao == '1':
+            inserir_pedido_na_producao(cursor, conn)
+        elif opcao == '2':
+            dados_finais_da_producao(cursor, conn)
+        elif opcao == '3':
+            print("Saindo do menu de produção.")
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
