@@ -7,12 +7,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from SRC.produtos import menu_produtos
 from SRC.pedidos import menu_pedidos
+from SRC.producao import menu_producao
 from DATA.database_da_plotter import conectar_banco
 
 def main():
     conn, cursor = conectar_banco()
     menu_produtos(cursor, conn)
     menu_pedidos(cursor, conn)
+    menu_producao(cursor, conn)
     conn.close()
 
 if __name__ == "__main__":
