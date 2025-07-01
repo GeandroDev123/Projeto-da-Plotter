@@ -54,6 +54,7 @@ def criar_tabelas():
         data_entrega TEXT NOT NULL,
         projecao_placas INTEGER NOT NULL,
         status TEXT NOT NULL CHECK(status IN ('ABERTO', 'FINALIZADO', 'ANDAMENTO', 'CANCELADO','PENDENTE')),
+        FOREIGN KEY (cliente) REFERENCES produtos(cliente),
         FOREIGN KEY (codigo) REFERENCES produtos(codigo)
     )
     ''')
@@ -86,7 +87,6 @@ def criar_tabelas():
         FOREIGN KEY (numero_pedido) REFERENCES pedidos(numero_pedido)
     )
     ''')
-
 # Salva as alterações e fecha a conexão com o banco de dados
     conn.commit()
     conn.close()
