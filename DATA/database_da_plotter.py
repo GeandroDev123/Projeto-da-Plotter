@@ -65,6 +65,7 @@ def criar_tabelas():
     # hora de término,data finalização, quantidade produzida, quantidade esperada, eficiência,
     # status da produção(PENDENTE,ANDAMENTO,FINALIZADO),
     # placas utilizadas,sobras de placas,media de pares por placas
+
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS producao (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,16 +74,16 @@ def criar_tabelas():
         cliente TEXT NOT NULL,
         codigo INTEGER NOT NULL,
         descricao TEXT NOT NULL,
-        hora_inicio TIME NOT NULL,
-        hora_final TIME NOT NULL,
-        data_final DATE NOT NULL,
+        hora_inicio TIME,
+        hora_termino TIME,
+        data_final DATE,
         quantidade_produzida INTEGER NOT NULL,
         quantidade_esperada INTEGER NOT NULL,
-        eficiencia FLOAT NOT NULL,
-        status_do_pedido TEXT NOT NULL CHECK(status IN ('PENDENTE', 'ANDAMENTO', 'FINALIZADO')),
-        placas_utilizadas INTEGER NOT NULL,
-        sobras_placas INTEGER NOT NULL,
-        media_pares_por_placa FLOAT NOT NULL,
+        eficiencia FLOAT,
+        status TEXT NOT NULL CHECK(status IN ('PENDENTE', 'ANDAMENTO', 'FINALIZADO')),
+        placas_utilizadas FLOAT,
+        sobras_placas FLOAT,
+        media_pares_por_placa FLOAT,
         FOREIGN KEY (codigo) REFERENCES produtos(codigo),
         FOREIGN KEY (numero_pedido) REFERENCES pedidos(numero_pedido)
     )

@@ -1,4 +1,4 @@
-# #ACRESCENTAR A COLUNA CLIENTE NA TABELA DE PRODUÇÃO
+# # #ACRESCENTAR A COLUNA STATUS NA TABELA DE PRODUÇÃO
 
 # import sqlite3
 
@@ -7,12 +7,12 @@
 #     cursor = conn.cursor()
 
 #     try:
-#         cursor.execute('ALTER TABLE producao ADD COLUMN cliente TEXT')
+#         cursor.execute('ALTER TABLE producao ADD COLUMN status TEXT')
 #         conn.commit()
-#         print("Coluna 'cliente' adicionada com sucesso à tabela 'producao'.")
+#         print("Coluna 'status' adicionada com sucesso à tabela 'producao'.")
 #     except sqlite3.OperationalError as e:
 #         if "duplicate column name" in str(e):
-#             print("A coluna 'cliente' já existe.")
+#             print("A coluna 'status' já existe.")
 #         else:
 #             print(f"Erro ao adicionar coluna: {e}")
 
@@ -21,6 +21,9 @@
 # if __name__ == "__main__":
 #     atualizar_tabela_producao()
 
-        
+# import sqlite3
+# print(sqlite3.sqlite_version)
+
+    
 
    

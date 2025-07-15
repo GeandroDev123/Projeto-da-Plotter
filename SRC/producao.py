@@ -14,6 +14,9 @@ from datetime import datetime
 def inserir_pedido_na_producao(cursor, conn):
     try:
         data_inicial = input("Digite a data inicial da produção (dd/mm/yyyy): ").strip()
+        data_finalizacao = "00/00/0000"  # Inicializa como "00/00/0000", será preenchido depois
+        # Validar a data inicial
+        
         try:
             # Verifica se a data está no formato correto
             datetime.strptime(data_inicial, "%d/%m/%Y")
@@ -26,8 +29,14 @@ def inserir_pedido_na_producao(cursor, conn):
         # codigo será inserido automaticamente
         # descricao será inserida automaticamente
         hora_inicio = input("Digite a hora de inicio da produção (HH:MM): ").strip()
+        hora_termino = "00:00"  # Inicializa como "00:00", será preenchido depois
+        quantidade_produzida = "0" # Inicializa como 0, será preenchido depois
+        eficiencia = "0.0"  # Inicializa como 0.0, será preenchido depois
+        placas_utilizadas = "0.0"  # Inicializa como 0.0, será preenchido depois
+        sobras_placas = "0.0"  # Inicializa como 0.0, será preenchido depois
+        media_pares_por_placa = "0.0"  # Inicializa como 0.0, será preenchido depois
         # quantidade esperada será inserida automaticamente conforme o pedido cadastrado
-        status_do_pedido = 'PENDENTE'  # Status inicial do pedido
+        status = 'PENDENTE'  # Status inicial do pedido
 
         # buscar o pedido no banco de dados
         cursor.execute("SELECT cliente, codigo, descricao, quantidade_esperada FROM pedidos WHERE numero_pedido = ?", (numero_pedido,))
@@ -38,9 +47,9 @@ def inserir_pedido_na_producao(cursor, conn):
 
             # Inserir os dados na tabela de produção
             cursor.execute('''
-                INSERT INTO producao (data_inicial, numero_pedido, cliente, codigo, descricao,hora_inicio, quantidade_esperada, status_do_pedido)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (data_inicial, numero_pedido, cliente, codigo, descricao, hora_inicio, quantidade_esperada, status_do_pedido))
+                INSERT INTO producao (data_inicial,data_finalizacao, numero_pedido, cliente, codigo, descricao,hora_inicio,hora_termino, quantidade_esperada, quantidade_produzida, eficiencia, placas_utilizadas, sobras_placas, media_pares_por_placa, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (data_inicial, data_finalizacao, numero_pedido, cliente, codigo, descricao, hora_inicio, hora_termino, quantidade_esperada, quantidade_produzida, eficiencia, placas_utilizadas, sobras_placas, media_pares_por_placa, status))
             conn.commit()
             print("Dados do pedido inseridos na produção com sucesso!")
 
@@ -53,15 +62,17 @@ def inserir_pedido_na_producao(cursor, conn):
 
 
 # Funções para inserir dados finais da produção
-# Data Final, Hora final, Quantidade produzida,placass utilizadas,
+# Essa função só deverá ser chamada quando o pedido estiver finalizado
+# Data Final, Hora termino, Quantidade produzida,placass utilizadas,
 # sobras de placas
 
-# Função para solicitar e validar hora final
-def hora_final():
-    hora_final = input("Digite a hora final da produção (HH:MM): ").strip()
+# Função para solicitar e validar hora de término
+# Essa função deve ser chamada quando o pedido estiver finalizado
+def hora_termino():
+    hora_termino = input("Digite a hora de término da produção (HH:MM): ").strip()
     try:
-        datetime.strptime(hora_final, "%H:%M")
-        return hora_final
+        datetime.strptime(hora_termino, "%H:%M")
+        return hora_termino
     except ValueError:
         print("Hora inválida. Use o formato HH:MM.")
         return None
@@ -89,10 +100,10 @@ def dados_finais_da_producao():
         return None, None, None
 
 # Atualiza a linha da produção ainda pendente
-def atualizar_producao(hora_final, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, cursor, conn):
+def atualizar_producao(hora_termino, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, cursor, conn):
     try:
         # Buscar uma produção em aberto
-        cursor.execute("SELECT id FROM producao WHERE data_final IS NULL AND hora_final IS NULL")
+        cursor.execute("SELECT id FROM producao WHERE data_finalizacao = '00/00/0000' AND hora_termino = '00:00'")
         producao = cursor.fetchone()
 
         if not producao:
@@ -103,10 +114,10 @@ def atualizar_producao(hora_final, data_final, quantidade_produzida, placas_util
 
         cursor.execute('''
             UPDATE producao
-            SET hora_final = ?, data_final = ?, quantidade_produzida = ?,
+            SET hora_termino = ?, data_finalizacao = ?, quantidade_produzida = ?,
                 placas_utilizadas = ?, sobras_placas = ?
             WHERE id = ?
-        ''', (hora_final, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, producao_id))
+        ''', (hora_termino, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, producao_id))
 
         conn.commit()
         print("Produção finalizada com sucesso!")
@@ -155,32 +166,31 @@ def calcular_eficiencia(cursor, conn):
 # Quando o usuario inserir quantidade produzida
 # O sistema deve atualizar o status dos pedidos na tabela de produção automaticamente
 
-def atualizar_status_producao(quantidade_produzida,status_do_pedido, cursor, conn):
+def atualizar_status_producao(cursor, conn):
     try:
         # Buscar produção
-        cursor.execute("SELECT numero_pedido, quantidade_produzida FROM producao WHERE data_final IS NOT NULL ORDER BY id DESC LIMIT 1")
+        cursor.execute("SELECT id, quantidade_esperada, quantidade_produzida FROM producao WHERE data_finalizacao != '00/00/0000' ORDER BY id DESC LIMIT 1")
         producao = cursor.fetchone()
 
         if not producao:
             print("Nenhuma produção finalizada encontrada.")
             return
-        numero_pedido, quantidade_produzida = producao
+        producao_id, quantidade_esperada, quantidade_produzida = producao
 
         # Atualizar o status com base na quantidade produzida
-        if quantidade_produzida < 100:
-            status_do_pedido = 'ANDAMENTO'
-        elif quantidade_produzida >= 100:
-            status_do_pedido = 'FINALIZADO'
+        if quantidade_produzida < quantidade_esperada:
+            status = 'ANDAMENTO'
         else:
-            status_do_pedido= 'PENDENTE'
+            status = 'FINALIZADO'
+
         # Atualizar o status na tabela de produção
         cursor.execute('''
         UPDATE producao
-        SET status_do_pedido = ?
-        WHERE numero_pedido = ?
-        ''', (status_do_pedido, numero_pedido))
+        SET status = ?
+        WHERE id = ?
+        ''', (status, producao_id))
         conn.commit()
-        print(f"Status da produção atualizado para: {status_do_pedido}")
+        print(f"Status da produção atualizado para: {status}")
     except Exception as e:
         print(f"Erro ao atualizar status da produção: {e}")
         conn.rollback()
@@ -237,7 +247,17 @@ def menu_producao(cursor, conn):
         if opcao == '1':
             inserir_pedido_na_producao(cursor, conn)
         elif opcao == '2':
-            dados_finais_da_producao(cursor, conn)
+            # Solicita dados finais
+            hora_fim = hora_termino()
+            data_fim = data_final()
+            quantidade, placas, sobras = dados_finais_da_producao()
+            if None in (hora_fim, data_fim, quantidade, placas, sobras):
+                print("Dados inválidos, operação cancelada.")
+                continue
+            atualizar_producao(hora_fim, data_fim, quantidade, placas, sobras, cursor, conn)
+            calcular_eficiencia(cursor, conn)
+            calcular_media_pares_por_placa(quantidade, placas, cursor, conn)
+            atualizar_status_producao(cursor, conn)
         elif opcao == '3':
             print("Saindo do menu de produção.")
             break
