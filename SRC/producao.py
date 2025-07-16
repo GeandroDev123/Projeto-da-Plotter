@@ -79,28 +79,27 @@ def hora_termino():
 
 # Função para solicitar e validar data final
 def data_final():
-    data_final = input("Digite a data final da produção (dd/mm/yyyy): ").strip()
-    try:
-        datetime.strptime(data_final, "%d/%m/%Y")
-        return data_final
-    except ValueError:
-        print("Data inválida. Use o formato dd/mm/yyyy.")
-        return None
+    while True:
+        data_final = input("Digite a data final da produção (dd/mm/yyyy): ").strip()
+        try:
+            datetime.strptime(data_final, "%d/%m/%Y")
+            return data_final
+        except ValueError:
+            print("Data inválida. Use o formato dd/mm/yyyy.")
 
 # Solicita os dados finais de produção
 def dados_finais_da_producao():
-    try:
-        # Solicita dados finais da produção
-        quantidade_produzida = int(input("Digite a quantidade produzida: ").strip())
-        placas_utilizadas = float(input("Digite o número de placas utilizadas: ").strip().replace(',', '.'))
-        sobras_placas = float(input("Digite o número de sobras de placas: ").strip().replace(',', '.'))
-        return quantidade_produzida, placas_utilizadas, sobras_placas
-    except ValueError:
-        print("Todos os dados devem ser números.")
-        return None, None, None
+    while True:
+        try:
+            quantidade_produzida = int(input("Digite a quantidade produzida: ").strip())
+            placas_utilizadas = float(input("Digite o número de placas utilizadas: ").strip().replace(',', '.'))
+            sobras_placas = float(input("Digite o número de sobras de placas: ").strip().replace(',', '.'))
+            return quantidade_produzida, placas_utilizadas, sobras_placas
+        except ValueError:
+            print("Todos os dados devem ser números. Tente novamente.")
 
 # Atualiza a linha da produção ainda pendente
-def atualizar_producao(hora_termino, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, cursor, conn):
+def atualizar_producao(hora_termino, data_finalizacao, quantidade_produzida, placas_utilizadas, sobras_placas, cursor, conn):
     try:
         # Buscar uma produção em aberto
         cursor.execute("SELECT id FROM producao WHERE data_finalizacao = '00/00/0000' AND hora_termino = '00:00'")
@@ -108,7 +107,7 @@ def atualizar_producao(hora_termino, data_final, quantidade_produzida, placas_ut
 
         if not producao:
             print("Nenhuma produção pendente encontrada.")
-            return
+            return False
 
         producao_id = producao[0]
 
@@ -117,21 +116,23 @@ def atualizar_producao(hora_termino, data_final, quantidade_produzida, placas_ut
             SET hora_termino = ?, data_finalizacao = ?, quantidade_produzida = ?,
                 placas_utilizadas = ?, sobras_placas = ?
             WHERE id = ?
-        ''', (hora_termino, data_final, quantidade_produzida, placas_utilizadas, sobras_placas, producao_id))
+        ''', (hora_termino, data_finalizacao, quantidade_produzida, placas_utilizadas, sobras_placas, producao_id))
 
         conn.commit()
         print("Produção finalizada com sucesso!")
+        return True
 
     except Exception as e:
         print(f"Erro ao atualizar produção: {e}")
         conn.rollback()
+        return False
 
 # Função para calcular a eficiência da produção, após a inserção da quantidade produzida
 # A eficiência é calculada e inserida na tabela de produção atutomaticamente
 def calcular_eficiencia(cursor, conn):
     try:
         # Buscar uma produção finalizada
-        cursor.execute("SELECT id, quantidade_esperada, quantidade_produzida FROM producao WHERE data_final IS NOT NULL ORDER BY id DESC LIMIT 1")
+        cursor.execute("SELECT id, quantidade_esperada, quantidade_produzida FROM producao WHERE data_finalizacao != '00/00/0000' ORDER BY id DESC LIMIT 1")
         producao = cursor.fetchone()
 
         if not producao:
@@ -168,14 +169,25 @@ def calcular_eficiencia(cursor, conn):
 
 def atualizar_status_producao(cursor, conn):
     try:
-        # Buscar produção
-        cursor.execute("SELECT id, quantidade_esperada, quantidade_produzida FROM producao WHERE data_finalizacao != '00/00/0000' ORDER BY id DESC LIMIT 1")
+        # Buscar a última produção finalizada
+        cursor.execute(
+            "SELECT id, quantidade_esperada, quantidade_produzida FROM producao WHERE data_finalizacao != '00/00/0000' ORDER BY id DESC LIMIT 1"
+        )
         producao = cursor.fetchone()
 
         if not producao:
             print("Nenhuma produção finalizada encontrada.")
             return
+
         producao_id, quantidade_esperada, quantidade_produzida = producao
+
+        # Garante que os valores são numéricos
+        try:
+            quantidade_esperada = float(quantidade_esperada)
+            quantidade_produzida = float(quantidade_produzida)
+        except (TypeError, ValueError):
+            print("Erro nos dados de quantidade. Não foi possível atualizar o status.")
+            return
 
         # Atualizar o status com base na quantidade produzida
         if quantidade_produzida < quantidade_esperada:
@@ -184,11 +196,14 @@ def atualizar_status_producao(cursor, conn):
             status = 'FINALIZADO'
 
         # Atualizar o status na tabela de produção
-        cursor.execute('''
-        UPDATE producao
-        SET status = ?
-        WHERE id = ?
-        ''', (status, producao_id))
+        cursor.execute(
+            '''
+            UPDATE producao
+            SET status = ?
+            WHERE id = ?
+            ''',
+            (status, producao_id)
+        )
         conn.commit()
         print(f"Status da produção atualizado para: {status}")
     except Exception as e:
@@ -201,17 +216,16 @@ def atualizar_status_producao(cursor, conn):
 # Quantidade produzida / placas utilizadas
 # valor deve ser inserido na tabela de produção automaticamente
 
-def calcular_media_pares_por_placa(quantidade_produzida:int, placas_utilizadas:float, cursor, conn)->None:
+def calcular_media_pares_por_placa(quantidade_produzida: int, placas_utilizadas: float, cursor, conn) -> None:
     try:
-        # Verifica se as placas utilizadas são diferentes de zero,para evitar divisão por zero:
+        # Verifica se as placas utilizadas são diferentes de zero para evitar divisão por zero
         if placas_utilizadas == 0:
             media_pares_por_placa = 0
-
         else:
             media_pares_por_placa = round(quantidade_produzida / placas_utilizadas, 2)
 
         # Buscar a última produção finalizada
-        cursor.execute("SELECT id FROM producao WHERE data_final IS NOT NULL ORDER BY id DESC LIMIT 1")
+        cursor.execute("SELECT id FROM producao WHERE data_finalizacao != '00/00/0000' ORDER BY id DESC LIMIT 1")
         producao = cursor.fetchone()
 
         if not producao:
@@ -234,31 +248,120 @@ def calcular_media_pares_por_placa(quantidade_produzida:int, placas_utilizadas:f
         print(f"Erro ao calcular média de pares por placa: {e}")
         conn.rollback()
 
+# Função para editar o pedido na produção
+# Essa função deve ser chamada quando o usuário quiser editar um pedido na produção
+def editar_pedido_na_producao(cursor, conn):
+    try:
+        numero_pedido = input("Digite o número do pedido que deseja editar: ").strip()
+        
+        # Buscar o pedido na tabela de produção
+        cursor.execute("SELECT * FROM producao WHERE numero_pedido = ?", (numero_pedido,))
+        producao = cursor.fetchone()
+
+        if not producao:
+            print("Pedido não encontrado na produção.")
+            return
+
+        # Exibir os dados atuais do pedido conforme a ordem da tabela
+        print("\nDados atuais do pedido:")
+        print(f"ID: {producao[0]}")
+        print(f"Data Inicial: {producao[1]}")
+        print(f"Data Finalização: {producao[2]}")
+        print(f"Número do Pedido: {producao[3]}")
+        print(f"Cliente: {producao[4]}")
+        print(f"Código: {producao[5]}")
+        print(f"Descrição: {producao[6]}")
+        print(f"Hora Início: {producao[7]}")
+        print(f"Hora Término: {producao[8]}")
+        print(f"Quantidade Esperada: {producao[9]}")
+        print(f"Quantidade Produzida: {producao[10]}")
+        print(f"Eficiencia: {producao[11]}%")
+        print(f"Placas Utilizadas: {producao[12]}")
+        print(f"Sobras de Placas: {producao[13]}")
+        print(f"Média de Pares por Placa: {producao[14]}")
+        print(f"Status: {producao[15]}")
+
+        # Solicitar confirmação para editar o pedido
+        confirmacao = input("Você deseja editar este pedido? (sim/não): ").strip().lower()
+        if confirmacao != 'sim':
+            print("Edição cancelada.")
+            return
+        
+        # Editar os dados do pedido somente o que o usuário quiser
+        print("\nDigite os novos dados para o pedido (deixe em branco para manter o valor atual):")
+        nova_data_inicial = input(f"Nova data inicial (atual: {producao[1]}): ").strip() or producao[1]
+        nova_hora_inicio = input(f"Nova hora de início (atual: {producao[7]}): ").strip() or producao[7]
+        nova_hora_termino = input(f"Nova hora de término (atual: {producao[8]}): ").strip() or producao[8]
+        nova_quantidade_produzida = input(f"Nova quantidade produzida (atual: {producao[10]}): ").strip() or producao[10]
+        novas_placas_utilizadas = input(f"Novas placas utilizadas (atual: {producao[12]}): ").strip() or producao[12]
+        novas_sobras_placas = input(f"Novas sobras de placas (atual: {producao[13]}): ").strip() or producao[13]
+
+        # Conversão de tipos
+        try:
+            nova_quantidade_produzida = int(nova_quantidade_produzida)
+            novas_placas_utilizadas = float(novas_placas_utilizadas)
+            novas_sobras_placas = float(novas_sobras_placas)
+        except ValueError:
+            print("Erro: quantidade produzida, placas utilizadas e sobras devem ser numéricos.")
+            return
+
+        # Recalcular média de pares por placa
+        if novas_placas_utilizadas == 0:
+            nova_media_pares_por_placa = 0
+        else:
+            nova_media_pares_por_placa = round(nova_quantidade_produzida / novas_placas_utilizadas, 2)
+
+        # Atualizar status
+        quantidade_esperada = producao[9]
+        status = 'FINALIZADO' if nova_quantidade_produzida >= quantidade_esperada else 'ANDAMENTO'
+
+        # Validar a nova data inicial
+        try:
+            datetime.strptime(nova_data_inicial, "%d/%m/%Y")
+        except ValueError:
+            print("Data inicial inválida. Por favor, utilize o formato dd/mm/yyyy.")
+            return
+
+        # Atualizar os dados na tabela de produção
+        cursor.execute('''
+            UPDATE producao
+            SET data_inicial = ?, hora_inicio = ?, hora_termino = ?, quantidade_produzida = ?, placas_utilizadas = ?, sobras_placas = ?, media_pares_por_placa = ?, status = ?
+            WHERE id = ?
+        ''', (nova_data_inicial, nova_hora_inicio, nova_hora_termino, nova_quantidade_produzida, novas_placas_utilizadas, novas_sobras_placas, nova_media_pares_por_placa, status, producao[0]))
+
+        conn.commit()
+        print("Pedido atualizado com sucesso!")
+
+    except Exception as e:
+        print(f"Ocorreu um erro ao editar o pedido: {e}")
+        conn.rollback()
+
 # Função para exibir o menu de produção
 def menu_producao(cursor, conn):
     while True:
         print("\nMenu da Produção:")
         print("1. Inserir pedido na produção")
         print("2. Dados finais da produção")
-        print("3. Sair")
+        print("3. Editar pedido na produção")
+        print("4. Sair")
+        
 
         opcao = input("Escolha uma opção: ").strip()
 
         if opcao == '1':
             inserir_pedido_na_producao(cursor, conn)
         elif opcao == '2':
-            # Solicita dados finais
-            hora_fim = hora_termino()
-            data_fim = data_final()
-            quantidade, placas, sobras = dados_finais_da_producao()
-            if None in (hora_fim, data_fim, quantidade, placas, sobras):
-                print("Dados inválidos, operação cancelada.")
-                continue
-            atualizar_producao(hora_fim, data_fim, quantidade, placas, sobras, cursor, conn)
-            calcular_eficiencia(cursor, conn)
-            calcular_media_pares_por_placa(quantidade, placas, cursor, conn)
-            atualizar_status_producao(cursor, conn)
+            hora_termino_value = hora_termino()
+            if hora_termino_value:
+                data_finalizacao_value = data_final()
+                quantidade_produzida, placas_utilizadas, sobras_placas = dados_finais_da_producao()
+                if atualizar_producao(hora_termino_value, data_finalizacao_value, quantidade_produzida, placas_utilizadas, sobras_placas, cursor, conn):
+                    calcular_eficiencia(cursor, conn)
+                    atualizar_status_producao(cursor, conn)
+                    calcular_media_pares_por_placa(quantidade_produzida, placas_utilizadas, cursor, conn)
         elif opcao == '3':
+            editar_pedido_na_producao(cursor, conn)
+        elif opcao == '4':
             print("Saindo do menu de produção.")
             break
         else:
