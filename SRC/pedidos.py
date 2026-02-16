@@ -159,9 +159,9 @@ def excluir_pedido(cursor, conn):
         if pedido:
             numero_pedido, status_do_pedido = pedido
 
-            # Verificar se o status do pedido é "ANDAMENTO ou "ABERTO"
-            # Se o status for "ANDAMENTO" ou "ABERTO", o pedido pode ser excluído
-            if status_do_pedido in ("ANDAMENTO", "ABERTO"):
+            # Verificar se o status do pedido é "ABERTO"
+            # Se o status for "ABERTO", o pedido pode ser excluído
+            if status_do_pedido == "ABERTO":
                 # Exclui o pedido da tabela:
                 cursor.execute("DELETE FROM pedidos WHERE numero_pedido = ?", (numero_pedido,))
                 conn.commit()
@@ -196,8 +196,8 @@ def alterar_status_pedido(cursor, conn):
         if pedido:
             numero_encontrado, status_atual = pedido
     
-            # Verifica se o status atual do pedido é "ABERTO" ou "CANCELADO"
-            if status_atual == "ABERTO" or status_atual == "CANCELADO":
+            # Verifica se o status atual do pedido é "ABERTO"
+            if status_atual == "ABERTO":
                 # Solicita o novo status do pedido ao usuário
                 novo_status = input("Digite o novo status do pedido('ABERTO' ou 'CANCELADO'): ").strip().upper()
                 if novo_status in ["ABERTO", "CANCELADO"]:
@@ -226,42 +226,52 @@ STATUS_ABERTO = "ABERTO"
 STATUS_ANDAMENTO = "ANDAMENTO"
 STATUS_FINALIZADO = "FINALIZADO"
 
-# Função que atualiza o status do pedido com base na quantidade produzida
-def atualizar_status_pedido(numero_pedido, quantidade_produzida, cursor, conn):
+# Essa Função vai atualizar o status do pedido automaticamente
+# O usuario insere a quantidade produzida na tabela producao
+# O sistema soma tudo que já foi produzido
+# Compara com a quantidade esperada do pedido
+# Atualiza automaticamente o status do pedido conforme a quantidade produzida na tabela producao
+def atualizar_status_pedido(cursor, conn, numero_pedido):
     try:
-        # Verifica o status atual do pedido baseado no número do pedido
-        cursor.execute("SELECT status_do_pedido FROM pedidos WHERE numero_pedido = ?", (numero_pedido,))
-        resultado = cursor.fetchone()
+        # 1. Buscar quantidade esperada e status atual do pedido
+        cursor.execute("SELECT quantidade_esperada, status FROM pedidos WHERE numero_pedido = ?", (numero_pedido,))
+        pedido = cursor.fetchone()
 
-        if resultado:
-            status_do_pedido = resultado[0]  # status atual no banco
+        if not pedido:
+            # Silencioso ou log de aviso, pois pode ser chamado em loop
+            return None
 
-            # Lógica para determinar o novo status
-            if quantidade_produzida == 0:
-                novo_status = STATUS_ABERTO
-            elif 0 < quantidade_produzida < 100:
-                novo_status = STATUS_ANDAMENTO
-            elif quantidade_produzida >= 100:
-                novo_status = STATUS_FINALIZADO
-            else:
-                novo_status = status_do_pedido  # não muda se não atender os critérios
+        quantidade_esperada_db, status_atual_db = pedido
 
-            # Atualiza o status do pedido no banco
-            cursor.execute(
-                "UPDATE pedidos SET status_do_pedido = ? WHERE numero_pedido = ?",
-                (novo_status, numero_pedido)
-            )
-            conn.commit()
+        # 2. Se o pedido estiver CANCELADO, não atualiza o status
+        if status_atual_db == "CANCELADO":
+            return status_atual_db
 
-            # Mensagem de sucesso
-            print(f"Status do pedido '{numero_pedido}' atualizado para '{novo_status}' com sucesso!")
+        # 3. Converte a quantidade esperada para float com segurança
+        quantidade_esperada = float(quantidade_esperada_db) if quantidade_esperada_db else 0.0
 
+        # 4. Somar tudo que já foi produzido para esse pedido
+        cursor.execute("SELECT COALESCE(SUM(quantidade_produzida), 0) FROM producao WHERE numero_pedido = ?", (numero_pedido,))
+        quantidade_produzida = float(cursor.fetchone()[0] or 0)
+
+        # 5. Determina o novo status
+        if quantidade_produzida <= 0:
+            novo_status = STATUS_ABERTO
+        elif quantidade_produzida < quantidade_esperada:
+            novo_status = STATUS_ANDAMENTO
         else:
-            print(f"Erro: Pedido com número '{numero_pedido}' não encontrado.")
+            novo_status = STATUS_FINALIZADO
+
+        # 6. Atualiza somente se houver mudança de status
+        if novo_status != status_atual_db:
+            cursor.execute("UPDATE pedidos SET status = ? WHERE numero_pedido = ?", (novo_status, numero_pedido,))
+            conn.commit()
+            print(f"Status do pedido '{numero_pedido}' atualizado: {status_atual_db} -> {novo_status}")
+
+        return novo_status
 
     except Exception as e:
         print(f"Erro ao atualizar status do pedido: {e}")
-
 
 # FUNÇÃO PARA LISTAR PEDIDOS NA TABELA:
 # O usuário poderá listar todos os pedidos cadastrados na tabela.
@@ -285,8 +295,9 @@ def listar_pedidos(cursor, conn):
         # Solicita ao usuário o tipo de listagem desejada
         print("Escolha o tipo de listagem:")
         print("1.Listar todos os pedidos: ")
-        print("2.Listar pedidos por cliente: ")
-        print("3.Listar pedidos por status: ")
+        print("2.Listar pedidos pelo número do pedido: ")
+        print("3.Listar pedidos por cliente: ")
+        print("4.Listar pedidos por status: ")
 
         opcao = input("Digite o número da opção desejada: ").strip()
 
@@ -297,11 +308,23 @@ def listar_pedidos(cursor, conn):
             if pedidos:
                 print("Lista de todos os pedidos:")
                 for pedido in pedidos:
-                    print(pedido)
+                    print(tuple(pedido))
             else:
                 print("Nenhum pedido cadastrado.")
 
         elif opcao == "2":
+            # Listar pedidos por número do pedido
+            numero_pedido = input("Digite o número do pedido: ").strip()
+            cursor.execute("SELECT * FROM pedidos WHERE numero_pedido = ?", (numero_pedido,))
+            pedidos = cursor.fetchall()
+            if pedidos:
+                print(f"Lista de pedidos com número '{numero_pedido}':")
+                for pedido in pedidos:
+                    print(tuple(pedido))
+            else:
+                print(f"Nenhum pedido encontrado com o número '{numero_pedido}'.")
+
+        elif opcao == "3":
             # Listar pedidos por cliente
             cliente = input("Digite o nome do cliente: ").strip()
             cursor.execute("SELECT * FROM pedidos WHERE cliente = ?", (cliente,))
@@ -309,19 +332,19 @@ def listar_pedidos(cursor, conn):
             if pedidos:
                 print(f"Lista de pedidos do cliente '{cliente}':")
                 for pedido in pedidos:
-                    print(pedido)
+                    print(tuple(pedido))
             else:
                 print(f"Nenhum pedido encontrado para o cliente '{cliente}'.")
 
-        elif opcao == "3":
+        elif opcao == "4":
             # Listar pedidos por status
-            status = input("Digite o status do pedido (ABERTO, ANDAMENTO, FECHADO, CANCELADO): ").strip().upper()
+            status = input("Digite o status do pedido (ABERTO, ANDAMENTO, FINALIZADO, CANCELADO): ").strip().upper()
             cursor.execute("SELECT * FROM pedidos WHERE status = ?", (status,))
             pedidos = cursor.fetchall()
             if pedidos:
                 print(f"Lista de pedidos com status '{status}':")
                 for pedido in pedidos:
-                    print(pedido)
+                    print(tuple(pedido))
             else:
                 print(f"Nenhum pedido encontrado com o status '{status}'.")
 
@@ -359,10 +382,6 @@ def menu_pedidos(cursor, conn):
             break
         else:
             print("Opção inválida! Tente novamente.")
-
-        
-        
-
 
 
 
